@@ -102,6 +102,29 @@ int main (int argc, char ** argv) {
 
 		else {
 		    arg = args;
+		    int i = 0;
+		    int truncate = 0;
+		    char * input = 0;
+		    char * output = 0;
+		    for(i = 0; args[i] != NULL; i++)
+		    {
+		    	if(!strcmp(args[i], "<"))
+		    	{
+		    		strcpy(args[i], "\0");
+		    		input = malloc(strlen(args[i+1]) * sizeof(args[i]));
+		    		strcpy(input, args[++i]);
+		    	}
+		    	else if(!strcmp(args[i], ">"))
+		    	{
+		    		output = malloc(strlen(args[i+1]) * sizeof(args[i]));
+		    		strcpy(output, args[++i]);
+		    	}
+		    	else if(!strcmp(args[i], ">>"))
+		    	{
+		    		strcpy(output, args[++i]);
+		    		truncate = 1;
+		    	}
+		    }
 		    while (*arg) {
 		    	if (!strcmp(*arg, "dir"))
 		    	{
@@ -111,11 +134,11 @@ int main (int argc, char ** argv) {
 		    			case -1:
 		    				//syserr("fork");
 		    			case 0:
-		    			//char *eargs[];
 				    		if(!args[1])
 				    		{
 				    			//system("ls -al");
-				    			//*eargs[] = {"ls", "-al", ".", NULL}
+				    			char * eargs[] = {"ls", "-al", ".", NULL };
+				    			execvp("ls", eargs);
 				    			break;
 				    		}
 				    		*arg++;
@@ -126,9 +149,8 @@ int main (int argc, char ** argv) {
 				    			//*arg++;
 				    			//getcwd(directory, sizeof(directory));
 				    			printf("directory: %s\n", directory);
-				    			char *eargs[] = {"ls", "-al", directory, NULL };
+				    			char * eargs[] = {"ls", "-al", directory, NULL };
 				    			execvp("ls", eargs);
-
 				    			//syserr("exec");
 				    		}
 				    		
@@ -148,8 +170,9 @@ int main (int argc, char ** argv) {
 		    		static char pwd[1024];
 		    		static char final_pwd[1024];
 		    		strcpy(cd, *arg++);
+		    		getcwd(pwd, sizeof(pwd));
 		    		if(!args[1]) {
-		    			args[1] = ".";
+		    			printf("%s\n", pwd);
 		    		}
 		    		while(*arg)
 		    		{
@@ -157,7 +180,7 @@ int main (int argc, char ** argv) {
 		    			// strcat(cd, *arg
 		    			if(chdir(*arg++) == 0)
 		    			{
-		    				if(getcwd(pwd, sizeof(pwd)) != NULL)
+		    				if(pwd != NULL)
 		    				{
 		    					strcpy(final_pwd,"PWD=");
 		    					strcat(final_pwd, pwd);
@@ -170,6 +193,20 @@ int main (int argc, char ** argv) {
 
 		    		//free(cd);
 		    	}
+		    	else if(!strcmp(*arg, "echo"))
+		    	{
+		    		printf("%s\n", (char *)args[1]);
+		    		if(input != NULL)
+		    		{
+		    			printf("input: %s\n", input);
+		    		}
+		    		if(output != NULL)
+		    		{
+		    			printf("output: %s\n", output);
+		    		}
+		    		
+		    		break;
+		    	}
 		    	else
 		    	{
 		    		char * cmd = malloc(7 + sizeof(args));
@@ -178,9 +215,9 @@ int main (int argc, char ** argv) {
 		    		{
 		    			strcat(cmd, " ");
 		    			strcat(cmd, *arg++);
-		    			
 
 		    		}
+		    		printf("%s\n", "Command not found. Executing default unix command.");
 		    		system(cmd);
 		    		free(cmd);
 		    	}
