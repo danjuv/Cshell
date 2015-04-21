@@ -60,24 +60,45 @@ int main (int argc, char ** argv) {
     char * prompt = getenv("PWD");				// shell prompt
     FILE * fp_in = 0;
     FILE * fp_out = 0;
+    FILE * batch = 0;
     int s_in = dup(fileno(stdin));
     int s_out = dup(STDOUT_FILENO);
+    int bg = 0;
     pid_t pid;
     strcat(prompt, " ==> ");
-
+    if(argv[1])
+    {
+    	batch = fopen(argv[1], "r");
+    }
 /* keep reading input until "quit" command or eof of redirected input */
 
     while (1) {
 
 /* get command line from input */
     // prompt = getenv("PWD")
-	fputs (prompt, stdout);				// write prompt
-	if (fgets (buf, MAX_BUFFER, stdin)) {		// read a line
+    char line[MAX_BUFFER];
+    if(batch == NULL)
+    {
+		fputs (prompt, stdout);				// write prompt
+		fgets (line, MAX_BUFFER, stdin);
+	}
+
+	else
+	{
+		if(feof(batch))
+		{
+			fclose(batch);
+			exit(1);
+		}
+		fgets(line, MAX_BUFFER, batch); //next line in file;
+		//printf("%s\n", line);
+	}
+	if (line) {		// read a line
 
 /* tokenize the input into args array */
 
 	    arg = args;
-	    *arg++ = strtok (buf,SEPARATORS);		// tokenize input
+	    *arg++ = strtok (line,SEPARATORS);		// tokenize input
 	    while ((*arg++ = strtok (NULL,SEPARATORS)));
 							// last entry will be NULL
 
@@ -120,6 +141,10 @@ int main (int argc, char ** argv) {
 		    	{
 		    		output = args[++i];
 		    		fp_out = fopen(output, "a");
+		    	}
+		    	else if(!strcmp(args[1, "&"]))
+		    	{
+		    		bg = 1;
 		    	}
 		    }
 		    while (*arg) {
