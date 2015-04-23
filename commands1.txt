@@ -1,0 +1,11 @@
+dir ..
+dir
+cd ..
+cd ../..
+cd
+dir responses
+environ
+sleep
+sleep 3
+echo yes yes 213312
+

@@ -1,41 +1,9 @@
 /*
-    strtokeg - skeleton shell using strtok to parse command line
-
-    usage:
-
-	strtokeg
-
-	reads in a line of keyboard input at a time, parsing it into
-	tokens that are separated by white spaces (set by #define
-	SEPARATORS).
-
-	can use redirected input
-
-	if the first token is a recognized internal command, then that
-	command is executed. otherwise the tokens are printed on the
-	display.
-
-	internal commands:
-	    clear - clears the screen
-
-	    quit - exits from the program
-
- ********************************************************************
-    version:	     1.1
-    date:	     Originally written in December 2003,
-		     updated in March 2015
-    original author: Ian G Graham
-		     School of Information Technology
-		     Griffith University, Gold Coast
-		     ian.graham@griffith.edu.au
-
-    ** This code has been updated by USYD SIT teaching staff in 2015 **
-
-    Copyright (C) Ian G Graham, 2003. All rights reserved.
-
-    This code can be used for teaching purposes, but no warranty,
-    explicit or implicit, is provided.
- *******************************************************************/
+    MyShell - basic C shell that emulates the unix bash
+    Author - Danju Visvanthan
+    SID - 312095252
+    Written for COMP3520 Assignment 1 2015 Semester 1.
+*/
 
 #include <string.h>
 #include <stdio.h>
@@ -50,8 +18,30 @@
 #define SEPARATORS " \t\n"				// token sparators
 
 extern int errno;
+int bg = 0;
+void syserr(char*);
 
-//void syserr(char* );
+void to_wait(pid_t pid)
+{
+	//waits if program is operating in foreground.
+	if(bg == 0)
+	{
+		waitpid(pid, NULL, WUNTRACED);
+	}
+	bg = 0;
+	
+}
+
+void pipe_io(FILE * fp, int io)
+{
+	//pipes io (stdin or stdout) to file fp
+	return;
+}
+
+void set_env(env, val)
+{
+	//wrapper around putenv to behave like setenv.
+}
 
 int main (int argc, char ** argv) {
     char buf[MAX_BUFFER];				// line buffer
@@ -63,16 +53,24 @@ int main (int argc, char ** argv) {
     FILE * batch = 0;
     int s_in = dup(fileno(stdin));
     int s_out = dup(STDOUT_FILENO);
-    int bg = 0;
     pid_t pid;
     strcat(prompt, " ==> ");
     if(argv[1])
     {
-    	batch = fopen(argv[1], "r");
+    	if(access(argv[1], F_OK) == -1)
+    	{
+    		fprintf(stderr, "ERROR: opening script file; %s; No such file or directory\n", argv[1]);
+    	}
+    	else
+    	{
+    		batch = fopen(argv[1], "r");
+    	}
+
     }
 /* keep reading input until "quit" command or eof of redirected input */
 
-    while (1) {
+    while (1) 
+    {
 
 /* get command line from input */
     // prompt = getenv("PWD")
@@ -118,7 +116,8 @@ int main (int argc, char ** argv) {
 /* else pass command onto OS (or in this instance, print them out) */
 
 		else {
-		    arg = args;
+
+		    
 		    int i = 0;
 		    char * input = 0;
 		    char * output = 0;
@@ -127,9 +126,8 @@ int main (int argc, char ** argv) {
 		    	if(!strcmp(args[i], "<"))
 		    	{
 		    		strcpy(args[i], "\0");
-		    		input = malloc(strlen(args[i+1]) * sizeof(args[i]));
-		    		strcpy(input, args[++i]);
-		    		//fp_in = fopen(input, "r", stdout);
+		    		input = args[++i];
+		    		fp_in = fopen(input, "r");
 		    	}
 		    	else if(!strcmp(args[i], ">"))
 		    	{
@@ -142,11 +140,13 @@ int main (int argc, char ** argv) {
 		    		output = args[++i];
 		    		fp_out = fopen(output, "a");
 		    	}
-		    	else if(!strcmp(args[1, "&"]))
+		    	else if(!strcmp(args[i], "&"))
 		    	{
+		    		args[i] = '\0';
 		    		bg = 1;
 		    	}
 		    }
+		    arg = args;
 		    while (*arg) {
 		    	if (!strcmp (args[0], "environ"))
 		    	{
@@ -235,7 +235,7 @@ int main (int argc, char ** argv) {
 		    				exit(1);
 				    	default:
 				    		//printf("Test\n");
-				    		waitpid(pid, NULL, WUNTRACED);
+				    		to_wait(pid);
 		    		}
 		    		//fputs(directory, stdout);
 		    		fp_out = NULL;
@@ -310,7 +310,7 @@ int main (int argc, char ** argv) {
 		    				}
 		    				exit(1);
 		    			default:
-		    				waitpid(pid, NULL, WUNTRACED);
+		    				to_wait(pid);
 
 
 		    		}
@@ -319,16 +319,35 @@ int main (int argc, char ** argv) {
 		    	}
 		    	else
 		    	{
-		    		char * cmd = *arg++;
-		    		// strcpy(cmd, *arg++);
-		    		while(*arg)
+		    		switch(pid = fork())
 		    		{
-		    			strcat(cmd, " ");
-		    			strcat(cmd, *arg++);
+		    			case 0:
+		    			;
+		    				int std_in = dup(STDIN_FILENO);
+		    				int std_out = dup(STDOUT_FILENO);
+			    			if(fp_out != NULL)
+			    			{
+			    				dup2(fileno(fp_out), 1);
+			    				close(fileno(fp_out));
+			    			}
+			    			if(fp_in != NULL)
+			    			{
+			    				dup2(fileno(fp_in), STDIN_FILENO);
+			    				close(fileno(fp_in));
+			    			}
+			    			char * args_f[3];
+			    			args_f[0] = args[0];
+			    			args_f[1] = args[2];
+			    			args_f[2] = '\0';
+		    				execvp(args[0], args);
+		    				exit(1);
+		    			default:
+		    				to_wait(pid);
 
 		    		}
-		    		printf("%s\n", "Command not found. Executing default unix command.");
-		    		system(cmd);
+		    		fp_in = NULL;
+		    		fp_out = NULL;
+		    		break;
 		    	}
 		    }
 		    //fputs ("\n", stdout);
