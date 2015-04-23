@@ -1,1 +1,84 @@
-test
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+	 *                                                             *
+	 *    MyShell - basic C shell that emulates the unix bash      *
+	 *    Author - Danju Visvanthan                                *
+	 *    SID - 312095252                                          *
+	 *    Written for COMP3520 Assignment 1 2015 Semester 1.       *
+	 *                                                             *
+	 *                                                             *
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ NAME
+	myshell - basic implementation mirroring the functionality of the UNIX bash.
+
+ SYNOPSIS
+	myshell [file]
+	myshell
+
+	ERRORS: if the batchfile does not exist, an appropriate error message is displayed, and the
+			shell is invoked as it would be without a batchfile.
+
+ DESCRIPTION
+	A basic shell that is developed to closely mirror the fundamental commands of the UNIX
+	bash. It supports the basic commands (cd, echo, environ, help, quit, clr, dir) and
+	externally executes any other commands. It also has support for I/O redirection.
+
+ COMMANDS
+	cd <directory>: Changes the directory to the specified argument. Does not necessarily 
+					have to be an absolute path (although this is supported), and
+					support for shortcuts such as "..", "." exist, but "~" is not supported.
+					entering cd with no arguments prints the current working directory.
+					The PWD environment variable is changed to reflect the new directory.
+					
+				ERRORS: If the location does not exist, the command is ignored and an appropriate
+				messageis outputted.
+
+	dir <n>:		Lists the contents of the current directory if no argument is specified,
+					otherwise lists the contents of directory n, if it exists. supports
+					multiple directories e.g. dir . .. ../.. will print the contents of the
+					current, parent, and the parent's parent directories respectively. 
+
+	echo <n>:		Prints to stdout, if no argument is specified, a blank line is displayed.
+
+	clr:			clears all output displayed on the screen.
+
+	environ: An array of string pointers of every environment variable
+
+	help: Displays the readme.
+
+	quit: Exits the shell.
+
+ I/O REDIRECTION
+		Input redirection [<]: replaces the STDIN stream with any file F (all input required for a program
+							   is replaced by each line in F).
+
+			ERRORS: If the file does not exist, an error message is displayed, and the command is ignored.
+					If no file is specified, an error message is displayed, and the command is ignored.
+
+			USAGE: programname arg1 < filename
+
+		Output Redirection [>]: replaces the STDOUT stream with any File F (all output generated from a program
+								is instead inserted into f.). If F does not exist, it is created. If F exists,
+								it is replaced in its entirety by the output from STDOUT.
+
+			ERRORS: If no file is specified, an error message is displayed, and the command is ignored.
+
+			USAGE: programname arg1 > filename
+
+		Appended Output redirection [>>]: See output redirection. If the file exists, it is instead appended to.
+
+			ERRORS: If no file is specified, an error message is displayed. The command is then ignored.
+
+			USAGE: programname arg1 >> filename
+
+ BACKGROUND EXECUTION [&]
+
+	Allows a program to execute in the background, allowing the shell to execute another program(s) in parallel with the
+	initial program.
+	This is achieved by continuing the parent process when a child process' program has been flagged as in the background,
+	not waiting for the process to return.
+
+	ERRORS: if no programname is specified, a syntax error is issued.
+			if the program errors or doesn't exist, the process will
+				first begin, then exit on error.
+	USAGE: programname arg1 &

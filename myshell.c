@@ -1,9 +1,13 @@
-/*
-    MyShell - basic C shell that emulates the unix bash
-    Author - Danju Visvanthan
-    SID - 312095252
-    Written for COMP3520 Assignment 1 2015 Semester 1.
-*/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ *                                                             *
+ *	  MyShell - basic C shell that emulates the unix bash      *
+ *    Author - Danju Visvanthan                                *
+ *    SID - 312095252                                          *
+ *    Written for COMP3520 Assignment 1 2015 Semester 1.       *
+ *															   *
+ *                                                             *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ 
 
 #include <string.h>
 #include <stdio.h>
@@ -19,6 +23,7 @@
 
 extern int errno;
 int bg = 0;
+char * shell_path [1024];
 void syserr(char*);
 
 void to_wait(pid_t pid)
@@ -32,15 +37,22 @@ void to_wait(pid_t pid)
 	
 }
 
-void pipe_io(FILE * fp, int io)
+void pipe_io(char * filename, int io)
 {
 	//pipes io (stdin or stdout) to file fp
 	return;
 }
 
-void set_env(env, val)
+
+
+void set_env(char * env, char * val)
 {
-	//wrapper around putenv to behave like setenv.
+	//wrapper around putenv to behave like setenv, without the memory leaks
+	char env_str[1024];
+	strcpy(env_str, env);
+	strcat(env_str, "=");
+	strcat(env_str, val);
+	putenv(env_str);
 }
 
 int main (int argc, char ** argv) {
@@ -48,6 +60,12 @@ int main (int argc, char ** argv) {
     char * args[MAX_ARGS];				// pointers to arg strings
     char ** arg;					// working pointer thru args
     char * prompt = getenv("PWD");				// shell prompt
+
+    strcpy(shell_path, prompt);
+    strcat(shell_path, "/readme");
+    char * shell = getenv("PWD");
+    strcat(shell, "/myshell");
+    set_env("SHELL", prompt);
     FILE * fp_in = 0;
     FILE * fp_out = 0;
     FILE * batch = 0;
@@ -176,27 +194,26 @@ int main (int argc, char ** argv) {
 		    	{
 		    		
 		    		char * directory = *arg++;
-		    		
+		    		int i = 1;
+		    		char * eargs[1024];
+		    		eargs[0] = "ls";
+		    		eargs[1] = "-al";
+		    		while(1)
+		    		{
+		    			if(args[i]==NULL || !strcmp(args[i], "<") || !strcmp(args[i], ">") || !strcmp(args[i], ">>"))
+		    			{
+		    				break;
+		    			}
+		    			eargs[i+1] = args[i];
+		    			i++;
+		    		}
 		    		switch (pid = fork())
 		    		{
-/*		    			    				if(fp_out != NULL)
-		    			    				{
-		    			    					dup2(fileno(fp_out), 1);
-		    			    					close(fileno(fp_out));
-		    			    				}
-
-		    			    				printf("%s\n", (char *)args[1]);
-
-		    			    				if(fp_out != NULL)
-		    			    				{
-		    				    				dup2(std_out, 1);
-		    				    				close(std_out);
-		    				    				fp_out = 0;
-		    			    				}*/
 		    			case -1:
 		    				//syserr("fork");
 		    			case 0:
 		    				;
+		    				set_env("PARENT", getenv("SHELL"));
 		    				int std_out = dup(STDOUT_FILENO);
 			    			if(fp_out != NULL)
 			    			{
@@ -207,22 +224,21 @@ int main (int argc, char ** argv) {
 				    		{
 				    			//system("ls -al");
 
-				    			char * eargs[] = {"ls", "-al", ".", NULL };
-				    			execvp("ls", eargs);
+				    			char * earg[] = {"ls", "-al", ".", NULL };
+				    			execvp("ls", earg);
 
 				    		}
 				    		else
 				    		{
-					    		while(*arg)
-					    		{
-					    			//strcpy(args[1], "ls -al ");
-					    			char * directory = *arg++;
+
+
 					    			//*arg++;
 					    			//getcwd(directory, sizeof(directory));
-					    			char * eargs[] = {"ls", "-al", directory, NULL };
+				    			printf("1: %s\n", eargs[2]);
+				    			printf("2: %s\n", eargs[3]);
 					    			execvp("ls", eargs);
-					    			//syserr("exec");
-					    		}
+					    			continue;
+					    		
 				    		}	
 
 		    				if(fp_out != NULL)
@@ -237,6 +253,7 @@ int main (int argc, char ** argv) {
 				    		//printf("Test\n");
 				    		to_wait(pid);
 		    		}
+		    	
 		    		//fputs(directory, stdout);
 		    		fp_out = NULL;
 		    		pid = getpid();
@@ -261,10 +278,8 @@ int main (int argc, char ** argv) {
 		    			{
 		    				getcwd(pwd, sizeof(pwd));
 		    				if(pwd != NULL)
-		    				{
-		    					strcpy(final_pwd,"PWD=");
-		    					strcat(final_pwd, pwd);
-		    					putenv(final_pwd);
+		    				{;
+		    					set_env("PWD", pwd);
 		    					prompt = getenv("PWD");
 		    					strcat(prompt, " ==> ");
 		    					break;
@@ -277,13 +292,41 @@ int main (int argc, char ** argv) {
 		    			}
 		    		}
 		    	}
+
+		    	else if(!strcmp(*arg, "help"))
+		    	{
+		    		char * std_out = STDOUT_FILENO;
+		    		switch(pid=fork())
+		    		{
+		    			case 0:
+		    				set_env("PARENT", getenv("SHELL"));
+				    		if(fp_out != NULL)
+				    		{
+				    			dup2(fileno(fp_out), 1);
+				    			close(fileno(fp_out));
+				    		}
+				    		execlp("more", "more", shell_path, NULL);
+				    		
+		    				if(fp_out != NULL)
+		    				{
+			    				dup2(std_out, 1);
+			    				close(std_out);
+		    				}
+		    				exit(1);
+		    			default:
+		    				to_wait(pid);
+    				}
+    				fp_out = 0;
+    				break;
+
+		    	}
 		    	else if(!strcmp(*arg, "echo"))
 		    	{
 		    		int std_out = dup(STDOUT_FILENO);
 		    		switch(pid = fork())
 		    		{
 		    			case 0:
-		    				//printf("%i", fileno(stdout));
+		    				set_env("PARENT", getenv("SHELL"));
 		    				if(fp_out != NULL)
 		    				{
 		    					dup2(fileno(fp_out), 1);
@@ -323,6 +366,7 @@ int main (int argc, char ** argv) {
 		    		{
 		    			case 0:
 		    			;
+		    				set_env("PARENT", getenv("SHELL"));
 		    				int std_in = dup(STDIN_FILENO);
 		    				int std_out = dup(STDOUT_FILENO);
 			    			if(fp_out != NULL)
