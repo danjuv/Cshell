@@ -179,7 +179,7 @@ int main (int argc, char ** argv) {
 		    		fp_out = fopen(output, "a"); //write and append
 		    	}
 
-		    	else if(!strcmp(args[i], "&"))
+		    	else if(!strcmp(args[i], "&")) //background execution
 		    	{
 		    		args[i] = '\0';
 		    		bg = 1;
@@ -204,13 +204,11 @@ int main (int argc, char ** argv) {
 		    		static char final_pwd[1024];
 		    		getcwd(pwd, sizeof(pwd));
 		    		if(!args[1]) {
-		    			printf("%s\n", pwd);
+		    			printf("%s\n", pwd); //print working directory if no arg
 		    		}
 		    		while(*arg)
 		    		{
-		    			// strcat(cd, " ");
-		    			// strcat(cd, *arg
-		    			if(chdir(*arg++) == 0) //change directory
+		    			if(chdir(*arg++) == 0) //change directory, check for error
 		    			{
 		    				getcwd(pwd, sizeof(pwd));
 		    				if(pwd != NULL)
