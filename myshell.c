@@ -102,7 +102,7 @@ int main (int argc, char ** argv) {
 /* get command line from input */
     // prompt = getenv("PWD")
     char line[MAX_BUFFER];
-    if(batch == NULL)
+    if(batch == NULL) // check if we're using a batch file
     {
     	char cwd[1024];
     	getcwd(cwd, sizeof(cwd));
@@ -113,41 +113,32 @@ int main (int argc, char ** argv) {
 
 	else
 	{
-		//supress command prompt if batch file
-		if(feof(batch))
+		//check if eof
+		if(fgets(line, MAX_BUFFER, batch) == NULL) //next command in batch file
 		{
 			fclose(batch);
 			exit(1);
 		}
-		fgets(line, MAX_BUFFER, batch); //next command in batch file
-		//printf("%s\n", line);
 	}
+	//everything proceeds identically from here
+	if (line) {
 
-	if (line) {		// read a line
-
-/* tokenize the input into args array */
 	    arg = args;
 	    *arg++ = strtok (line,SEPARATORS);		// tokenize input
 	    while ((*arg++ = strtok (NULL,SEPARATORS)));
 							// last entry will be NULL
 
-	    if (args[0]) {				// if there's anything there
+	    if (args[0]) {
 
-		if (!strcmp (args[0], "clr")) {		// "clr" command
+		if (!strcmp (args[0], "clr")) {
 		    system ("clear");
 		}
 
-		else if (!strcmp (args[0], "quit")) {	// "quit" command
+		else if (!strcmp (args[0], "quit")) {
 		    break;				// break out of "while" loop to quit
 		}
 
-		else if (!strcmp(args[0], "pause"))
-		{	
-			// only need to supress input
-			// doesn't matter how
-			getpass("Press Enter to continue...");
-			break;
-		}
+
 
 
 /* else pass command onto OS (or in this instance, print them out) */
@@ -165,6 +156,11 @@ int main (int argc, char ** argv) {
 		    	{
 		    		args[i] = NULL; // "delete" the element
 		    		input = args[++i];
+		    		if(access(input, F_OK) == -1)
+		    		{
+		    			printf("ERROR: %s; does not exist for i/p redirection.;\n", input);
+		    			//proceed normally (no input file) if it doesn't.
+		    		}
 		    		fp_in = fopen(input, "r"); //only read
 		    	}
 
@@ -192,7 +188,15 @@ int main (int argc, char ** argv) {
 		    arg  = args;
 		    while (*arg) {
 
-		    	if (!strcmp(*arg, "cd"))
+		    	if (!strcmp(args[0], "pause"))
+		    	{	
+		    		// only need to supress input
+		    		// doesn't matter how
+		    		getpass("Press Enter to continue...");
+		    		break;
+		    	}
+
+		    	else if (!strcmp(*arg, "cd"))
 		    	{
 
 		    		char * cd = *arg++;

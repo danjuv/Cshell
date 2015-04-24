@@ -33,12 +33,25 @@
 				ERRORS: If the location does not exist, the command is ignored and an appropriate
 				messageis outputted.
 
+				ARGS: The path to change to. If none specified, prints the current working directory.
+
 	dir <n>:		Lists the contents of the current directory if no argument is specified,
 					otherwise lists the contents of directory n, if it exists. supports
 					multiple directories e.g. dir . .. ../.. will print the contents of the
 					current, parent, and the parent's parent directories respectively. 
 
+				ERRORS: issues error message and aborts if directory specified does not exist.
+
+				ARGS: directory to list files for, if no arguments specified; lists current working
+					directory.
+
 	echo <n>:		Prints to stdout, if no argument is specified, a blank line is displayed.
+
+				ERRORS: None
+
+				ARGS: tokens to print out, can have multiple arguments. If no argument is specified,
+					  a blank line is instead displayed.
+
 
 	clr:			clears all output displayed on the screen.
 
