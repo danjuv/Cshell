@@ -51,14 +51,19 @@ void pipe_io(FILE * fp, int io)
 	}
 }
 
+void catch_signal(int num)
+{
+	printf("");
+}
+
 
 int main (int argc, char ** argv) {
-
+	signal(SIGINT, catch_signal);
+	signal(SIGTSTP, catch_signal);
 	FILE * fp_in = 0;
 	FILE * fp_out = 0;
 	FILE * batch = 0;
 
-    char buf[MAX_BUFFER];				// line buffer
     char * args[MAX_ARGS];				// pointers to arg strings
     char ** arg;					// working pointer thru args
 
@@ -72,7 +77,7 @@ int main (int argc, char ** argv) {
 
 
     pid_t pid;
-    char * prompt = " ==>" ;
+    char * prompt = " ==> " ;
 
     if(argv[1])
     {
@@ -82,6 +87,7 @@ int main (int argc, char ** argv) {
     		fprintf(stderr, "ERROR: opening script file; %s; No such file or directory\n", argv[1]);
     		//proceed normally if it doesn't.
     	}
+
     	else
     	{
     		batch = fopen(argv[1], "r");
@@ -89,7 +95,7 @@ int main (int argc, char ** argv) {
 
     }
 /* keep reading input until "quit" command or eof of redirected input */
-
+    
     while (1) 
     {
 
@@ -116,10 +122,10 @@ int main (int argc, char ** argv) {
 		fgets(line, MAX_BUFFER, batch); //next command in batch file
 		//printf("%s\n", line);
 	}
+
 	if (line) {		// read a line
 
 /* tokenize the input into args array */
-
 	    arg = args;
 	    *arg++ = strtok (line,SEPARATORS);		// tokenize input
 	    while ((*arg++ = strtok (NULL,SEPARATORS)));
@@ -133,6 +139,14 @@ int main (int argc, char ** argv) {
 
 		else if (!strcmp (args[0], "quit")) {	// "quit" command
 		    break;				// break out of "while" loop to quit
+		}
+
+		else if (!strcmp(args[0], "pause"))
+		{	
+			// only need to supress input
+			// doesn't matter how
+			getpass("Press Enter to continue...");
+			break;
 		}
 
 
@@ -177,86 +191,8 @@ int main (int argc, char ** argv) {
 		    }
 		    arg  = args;
 		    while (*arg) {
-		    	if (!strcmp (*arg, "environ"))
-		    	{
-		    		int std_out = dup(STDOUT_FILENO);
-		    		pipe_io(fp_out, 1);
-		    		extern char ** environ;
-		    		char ** env = environ;
-		    		while(*env) {
-		    			printf("%s\n", *env++);
-		    		}
-		    		pipe_io(fdopen(std_out, "r"), 1);
-    				fp_out = 0;
-    				break;
 
-		    	}
-		    	else if (!strcmp(*arg, "pause"))
-		    	{	
-		    		// only need to supress input
-		    		// doesn't matter how
-		    		getpass("Press Enter to continue...");
-		    		break;
-		    	}
-		    	else if (!strcmp(*arg, "dir"))
-		    	{
-		    		
-		    		char * directory = *arg++;
-		    		int i = 1;
-		    		char * eargs[1024];
-		    		static char parent[1024];
-		    		eargs[0] = "ls";
-		    		eargs[1] = "-al"; //hardcode values that are const for every dir
-		    		while(1)
-		    		{
-		    			// create execution array for each directory specified in dir.
-		    			if(args[i]==NULL || !strcmp(args[i], "<") || !strcmp(args[i], ">") || !strcmp(args[i], ">>"))
-		    			{
-		    				//no directory specified
-		    				break;
-		    			}
-		    			eargs[i+1] = args[i];
-		    			i++;
-		    		}
-		    		switch (pid = fork())
-		    		{
-		    			case -1:
-		    				//syserr("fork");
-		    			case 0:
-		    				;
-		    				setenv("PARENT", getenv("SHELL"), 1);
-		    				int std_out = dup(STDOUT_FILENO);
-		    				pipe_io(fp_out, 1);
-				    		if(!args[1] || !strcmp(args[1], "<") || !strcmp(args[1], ">") || !strcmp(args[1], ">>"))
-				    		{
-				    			//system("ls -al");
-
-				    			char * earg[] = {"ls", "-al", ".", NULL };
-				    			execvp("ls", earg);
-
-				    		}
-				    		else
-				    		{
-					    			execvp("ls", eargs);
-					    			continue;
-					    		
-				    		}	
-
-				    		pipe_io(fdopen(std_out, "r"), 1);
-		    				
-		    				exit(1);
-				    	default:
-				    		//printf("Test\n");
-				    		to_wait(pid);
-		    		}
-		    	
-		    		//fputs(directory, stdout);
-		    		fp_out = NULL;
-		    		pid = getpid();
-		    		break;
-
-		    	}
-		    	else if (!strcmp(*arg, "cd"))
+		    	if (!strcmp(*arg, "cd"))
 		    	{
 
 		    		char * cd = *arg++;
@@ -282,16 +218,118 @@ int main (int argc, char ** argv) {
 		    			
 		    			else
 		    			{
-		    				printf("invalid directory.\n");
+		    				printf("ERROR: change directory failed; No such file or directory\n");
 		    			}
 		    		}
 		    	}
+
+		    	else if (!strcmp (*arg, "environ"))
+		    	{
+		    		int std_out = dup(STDOUT_FILENO);
+		    		pipe_io(fp_out, 1);
+		    		extern char ** environ;
+		    		char ** env = environ;
+		    		while(*env) {
+		    			printf("%s\n", *env++);
+		    		}
+		    		pipe_io(fdopen(std_out, "r"), 1);
+    				fp_out = 0;
+    				break;
+
+		    	}
+
+		    	else if(!strcmp(*arg, "echo"))
+		    	{
+		    		int std_out = dup(STDOUT_FILENO);
+    				pipe_io(fp_out, 1);
+    				int i = 1;
+    				while(1)
+    				{
+    					if(args[i] == NULL)
+    					{
+    						printf("\n"); //blank line if no arguments or \n if new element
+    						break;
+    					}
+    					printf("%s ", (char *)args[i]);
+    					i++;
+
+    				}
+    				pipe_io(fdopen(std_out, "r"), 1);
+		    		fp_out = 0;
+		    		break;
+		    	}
+
+		    	else if (!strcmp(*arg, "dir"))
+		    	{
+		    		
+		    		static char parent[1024];
+
+		    		char * eargs[1024];
+		    		eargs[0] = "ls";
+		    		eargs[1] = "-al"; //hardcode values that are const for every dir
+
+		    		int i = 1;
+		    		while(1)
+		    		{
+		    			// create execution array for each directory specified in dir.
+		    			if(args[i]==NULL)
+		    			{
+		    				//no directory specified
+		    				eargs[i+1] = NULL;
+		    				break;
+		    			}
+		    			eargs[i+1] = args[i];
+		    			i++;
+		    		}
+
+		    		switch (pid = fork())
+		    		{
+		    			case -1:
+		    				fprintf(stderr, "bad fork");
+		    			case 0:
+		    				;
+		    				setenv("PARENT", getenv("SHELL"), 1);
+		    				int std_out = dup(STDOUT_FILENO);
+		    				pipe_io(fp_out, 1);
+				    		if(!args[1])
+				    		{
+				    			//system("ls -al");
+
+				    			char * earg[] = {"ls", "-al", ".", NULL };
+				    			execvp("ls", earg);
+
+				    		}
+				    		else
+				    		{
+					    			execvp("ls", eargs);
+					    			continue;
+					    		
+				    		}	
+
+				    		pipe_io(fdopen(std_out, "r"), 1);
+		    				
+		    				exit(1);
+				    	default:
+				    		//printf("Test\n");
+				    		to_wait(pid);
+		    		}
+		    	
+		    		//fputs(directory, stdout);
+		    		fp_out = NULL;
+		    		*arg++;
+		    		break;
+
+		    	}
+
 
 		    	else if(!strcmp(*arg, "help"))
 		    	{
 		    		char * std_out = STDOUT_FILENO;
 		    		switch(pid=fork())
 		    		{
+		    			case -1:
+		    				fprintf(stderr, "bad fork");
+
 		    			case 0:
 		    				setenv("PARENT", getenv("SHELL"), 1);
 		    				pipe_io(fp_out, 1);
@@ -308,41 +346,15 @@ int main (int argc, char ** argv) {
     				break;
 
 		    	}
-		    	else if(!strcmp(*arg, "echo"))
-		    	{
-		    		int std_out = dup(STDOUT_FILENO);
-		    		switch(pid = fork())
-		    		{
-		    			case 0:
-		    				setenv("PARENT", getenv("SHELL"), 1);
-		    				pipe_io(fp_out, 1);
-		    				int i = 1;
-		    				while(1)
-		    				{
-		    					if(args[i] == NULL || !strcmp(args[i], "<") || !strcmp(args[i], ">") || !strcmp(args[i], ">>"))
-		    					{
-		    						printf("\n"); //blank line if no arguments or \n if new element
-		    						break;
-		    					}
-		    					printf("%s ", (char *)args[i]);
-		    					i++;
 
-		    				}
-		    				pipe_io(fdopen(std_out, "r"), 1);
-		    				exit(1);
-		    			default:
-		    				to_wait(pid);
-
-
-		    		}
-		    		fp_out = 0;
-		    		break;
-		    	}
 		    	else
 		    	{
 		    		//external commands, feed to execvp
 		    		switch(pid = fork())
 		    		{
+		    			case -1:
+		    				fprintf(stderr, "bad fork");
+
 		    			case 0:
 		    			;
 		    				setenv("PARENT", getenv("SHELL"), 1);
