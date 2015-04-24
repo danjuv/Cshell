@@ -72,8 +72,8 @@ int main (int argc, char ** argv) {
     char * shell[256];
     strcpy(shell, "SHELL=");
     strcat(shell, getenv("PWD"));
-    strcat(shell, "/myshell"); // set env variable to executed directory;
-    putenv(shell);
+    strcat(shell, ++argv[0]); // remove the '.' at start of executable name.
+    putenv(shell); // set shell env
 
 
     pid_t pid;
@@ -295,17 +295,14 @@ int main (int argc, char ** argv) {
 		    				pipe_io(fp_out, 1);
 				    		if(!args[1])
 				    		{
-				    			//system("ls -al");
-
 				    			char * earg[] = {"ls", "-al", ".", NULL };
 				    			execvp("ls", earg);
 
 				    		}
 				    		else
 				    		{
-					    			execvp("ls", eargs);
-					    			continue;
-					    		
+					    		execvp("ls", eargs);
+					    		continue;
 				    		}	
 
 				    		pipe_io(fdopen(std_out, "r"), 1);
@@ -320,13 +317,13 @@ int main (int argc, char ** argv) {
 		    		fp_out = NULL;
 		    		*arg++;
 		    		break;
-
 		    	}
 
 
 		    	else if(!strcmp(*arg, "help"))
 		    	{
 		    		char * std_out = STDOUT_FILENO;
+		    		char tmp[1024];
 		    		switch(pid=fork())
 		    		{
 		    			case -1:
@@ -335,18 +332,18 @@ int main (int argc, char ** argv) {
 		    			case 0:
 		    				setenv("PARENT", getenv("SHELL"), 1);
 		    				pipe_io(fp_out, 1);
-				    		char tmp[1024];
+
+				    		strcpy(tmp, shell_path);
 				    		strcat(tmp, "/readme");
-				    		execlp("more", "more", "/home/danju/CShell/readme", NULL); //load readme with more filter
+				    		execlp("more", "more", tmp, NULL); //load readme with more filter
 				    		
-				    		pipe_io(fdopen(std_out, "r"), 1);
+				    		pipe_io(fdopen(std_out, "r"), 1); //redirect input back to stdout
 		    				exit(1);
 		    			default:
 		    				to_wait(pid);
     				}
     				fp_out = 0;
     				break;
-
 		    	}
 
 		    	else
@@ -360,12 +357,17 @@ int main (int argc, char ** argv) {
 		    			case 0:
 		    			;
 		    				setenv("PARENT", getenv("SHELL"), 1);
+		    				//duplicate to reuse later
 		    				int std_in = dup(STDIN_FILENO);
 		    				int std_out = dup(STDOUT_FILENO);
+
 			    			pipe_io(fp_out, 1);
 			    			pipe_io(fp_in, STDIN_FILENO);
-		    				execvp(args[0], args);
-		    				exit(1);
+			    			if(execvp(args[0], args) < 0)
+			    			{
+			    				printf("ERROR: exec failed -; %s; no such file or directory\n", args[0]);
+			    			}
+ 		    				exit(1);
 		    			default:
 		    				to_wait(pid);
 

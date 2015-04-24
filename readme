@@ -80,7 +80,8 @@
 
 		Appended Output redirection [>>]: See output redirection. If the file exists, it is instead appended to.
 
-			ERRORS: If no file is specified, an error message is displayed. The command is then ignored.
+			ERRORS: If no file is specified, an error message is displayed. The command proceeds
+					as it would if no redirection was specified.
 
 			USAGE: programname arg1 >> filename
 
